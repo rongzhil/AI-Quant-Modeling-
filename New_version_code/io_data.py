@@ -154,22 +154,13 @@ def _validate_daily(daily: pd.DataFrame) -> list[str]:
     return problems
 
 
-def load_all_prices(use_cache: bool = True, verbose: bool = True) -> pd.DataFrame:
-    """Aggregate every ticker's minute file into one all-market daily panel.
+def _read_minute_batches(verbose: bool = True) -> pd.DataFrame:
+    """Aggregate per-ticker minute CSVs in the batch dirs into a daily panel.
 
-    Walks the batch folders, aggregates each file to daily, validates it, and
-    concatenates the survivors into a long panel with columns
-    date, ticker, open, high, low, close, volume, daily_vwap.
-
-    Tickers whose files fail to load or validate are skipped (reported in the
-    summary), never silently dropped into the panel as bad rows. The result is
-    cached to parquet and reused unless ``use_cache`` is False.
+    Original price path: walks INPUT_BATCH_DIRS, aggregates each minute file to
+    daily bars (computing a real intraday VWAP), validates, and concatenates.
+    Returns a long panel: date, ticker, open, high, low, close, volume, daily_vwap.
     """
-    if use_cache and config.DAILY_PRICE_CACHE_PATH.exists():
-        if verbose:
-            print(f"Loading cached daily prices: {config.DAILY_PRICE_CACHE_PATH}")
-        return pd.read_parquet(config.DAILY_PRICE_CACHE_PATH)
-
     frames: list[pd.DataFrame] = []
     skipped: dict[str, str] = {}
     files_found = 0
@@ -198,23 +189,96 @@ def load_all_prices(use_cache: bool = True, verbose: bool = True) -> pd.DataFram
         raise RuntimeError("No ticker files produced a valid daily panel.")
 
     panel = pd.concat(frames, ignore_index=True)
+    if verbose:
+        print(f"Minute-aggregated panel: {panel['ticker'].nunique()} tickers, "
+              f"files found {files_found}, skipped {len(skipped)}")
+        for tkr, reason in list(skipped.items())[:20]:
+            print(f"  skipped {tkr}: {reason}")
+    return panel
+
+
+def _read_daily_file(verbose: bool = True) -> pd.DataFrame:
+    """Read the pre-aggregated daily long file (reshaped from Bloomberg).
+
+    Expects a long CSV with columns:
+        date, ticker, open, high, low, close, volume, daily_vwap
+    where date is M/D/YYYY and ticker is already standardized (no " US Equity").
+    This is the output of the reshape_ohlcv_vwap.py one-off script.
+
+    Validation, warmup cropping, sorting and caching are handled by the shared
+    code in load_all_prices(), so this function only reads and types the data.
+    """
+    path = config.DAILY_PRICE_SOURCE_PATH
+    if not path.exists():
+        raise FileNotFoundError(f"daily price file not found: {path}")
+
+    df = pd.read_csv(path)
+    df.columns = [str(c).strip().lower() for c in df.columns]
+
+    required = ["date", "ticker", "open", "high", "low", "close", "volume", "daily_vwap"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(f"daily file missing columns {missing}; found {list(df.columns)}")
+
+    # date may be ISO (from reshape script) or M/D/YYYY; let pandas infer, then
+    # fall back to explicit US format if needed.
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    if df["date"].isna().mean() > 0.5:
+        df["date"] = pd.to_datetime(df["date"], format="%m/%d/%Y", errors="coerce")
+    df = df.dropna(subset=["date"])
+
+    df["ticker"] = df["ticker"].astype(str).map(standardize_ticker)
+    for c in ["open", "high", "low", "close", "volume", "daily_vwap"]:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    if verbose:
+        print(f"Daily file read: {df['ticker'].nunique()} tickers, {len(df)} rows "
+              f"({df['date'].min().date()} .. {df['date'].max().date()})")
+    return df
+
+
+def load_all_prices(use_cache: bool = True, verbose: bool = True) -> pd.DataFrame:
+    """Load the all-market daily price panel from the configured source.
+
+    Dispatches on config.PRICE_SOURCE:
+      * "minute_batches" -> aggregate minute files (original path)
+      * "daily_file"     -> read a pre-aggregated Bloomberg daily pull
+
+    Whichever source is used, the same post-processing applies: validate columns,
+    sort, crop to [WARMUP_START_DATE, END_DATE], and cache to parquet. The output
+    schema is identical across sources, so nothing downstream needs to change.
+    """
+    if use_cache and config.DAILY_PRICE_CACHE_PATH.exists():
+        if verbose:
+            print(f"Loading cached daily prices: {config.DAILY_PRICE_CACHE_PATH}")
+        return pd.read_parquet(config.DAILY_PRICE_CACHE_PATH)
+
+    if config.PRICE_SOURCE == "minute_batches":
+        panel = _read_minute_batches(verbose=verbose)
+    elif config.PRICE_SOURCE == "daily_file":
+        panel = _read_daily_file(verbose=verbose)
+    else:
+        raise ValueError(f"unknown PRICE_SOURCE: {config.PRICE_SOURCE!r}")
+
+    # --- shared post-processing (source-independent) ---
+    required = ["date", "ticker", "open", "high", "low", "close", "volume", "daily_vwap"]
+    missing = [c for c in required if c not in panel.columns]
+    if missing:
+        raise ValueError(f"price panel missing required columns: {missing}")
+
+    panel["date"] = pd.to_datetime(panel["date"]).dt.normalize()
     panel = panel.sort_values(["date", "ticker"]).reset_index(drop=True)
 
     # Restrict to the warmup window so long-lookback alphas can use any history
-    # before START_DATE. WARMUP_START_DATE == START_DATE today (no extra data
-    # yet), so behavior is unchanged; once earlier data is scraped, only the
-    # config date changes and the extra warmup flows through automatically.
+    # before START_DATE. Change WARMUP_START_DATE in config to admit more history.
     panel = panel[
         (panel["date"] >= pd.Timestamp(config.WARMUP_START_DATE))
         & (panel["date"] <= pd.Timestamp(config.END_DATE))
     ].reset_index(drop=True)
 
     if verbose:
-        print(f"Aggregated daily panel: {panel['ticker'].nunique()} tickers, "
-              f"{len(panel)} rows, files found {files_found}, skipped {len(skipped)}")
-        if skipped:
-            for tkr, reason in list(skipped.items())[:20]:
-                print(f"  skipped {tkr}: {reason}")
+        print(f"Daily panel ready: {panel['ticker'].nunique()} tickers, "
+              f"{len(panel)} rows, source={config.PRICE_SOURCE}")
 
     config.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     panel.to_parquet(config.DAILY_PRICE_CACHE_PATH, index=False)

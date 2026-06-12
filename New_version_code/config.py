@@ -21,14 +21,29 @@ from pathlib import Path
 DATA_ROOT = Path("/Users/qq/Desktop/Icarus/Quant Strat/data")
 
 # Raw inputs.
+# ---------------------------------------------------------------------------
+# Price data source. Two modes:
+#   "minute_batches" : aggregate per-ticker minute CSVs in INPUT_BATCH_DIRS into
+#                      daily bars (original path; computes a real intraday VWAP).
+#   "daily_file"     : read pre-aggregated daily bars pulled straight from
+#                      Bloomberg from DAILY_PRICE_SOURCE_PATH (no aggregation).
+# Switch to "daily_file" once the daily pull is downloaded and its format is
+# wired into io_data._read_daily_file().
+PRICE_SOURCE = "daily_file"
+
 INPUT_BATCH_DIRS = [
     DATA_ROOT / "batch_001",
     DATA_ROOT / "batch_002",
     DATA_ROOT / "batch_003",
 ]
+# Path to the pre-aggregated daily file (one big file) OR a directory of daily
+# per-ticker files. Set this once the Bloomberg daily pull is on disk; the exact
+# read logic is filled into io_data._read_daily_file() after the format is known.
+DAILY_PRICE_SOURCE_PATH = DATA_ROOT / "daily_ohlcv_vwap.csv"  # reshaped long file
+
 GICS_MAPPING_PATH = DATA_ROOT / "sectors" / "SPX Sector_Industry Mapping.xlsx"
 FLOAT_PATH = DATA_ROOT / "Equity Float.xlsx"
-FACTOR_PATH = DATA_ROOT / "factors_carhart4_2023-05_2026-04.csv"
+FACTOR_PATH = DATA_ROOT / "factors_carhart4_2015-01_2026-04.csv"
 SPX_PATH = DATA_ROOT / "SPX_high_low_close.xlsx"
 
 # All generated artifacts (final dataset + reports) go here.
@@ -72,31 +87,35 @@ TICKER_ALIASES = {
 METADATA_COLUMNS = ["company_name", "sector", "industry", "sub_industry"]
 
 
-# ---------------------------------------------------------------------------
-# Date boundaries
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------- #
+# Date boundaries and chronological split
+# --------------------------------------------------------------------------- #
 # Data start including warmup. Long-window alphas (e.g. 33, 60) need ~1-2 years
 # of history before their first valid value. Once earlier price data is scraped,
 # change ONLY this line (e.g. to "2021-05-01") and the pipeline will use the
 # extra history for alpha computation without any other code change.
-WARMUP_START_DATE = "2023-05-01"
+# Data start including warmup. Long-window alphas (e.g. 33 needs ~503 trading
+# days, 75 needs ~189) need 1-2 years of history before their first valid value.
+# The daily Bloomberg pull starts 2015-01-01, so 2015-2016 serve purely as warmup
+# and evaluation begins in 2017 (every alpha is fully "warmed up" by then).
+WARMUP_START_DATE = "2015-01-01"
 
-# Evaluation / backtest window.
-START_DATE = "2023-05-01"
+# Evaluation / backtest window. 2015-2016 are warmup-only and excluded here.
+START_DATE = "2017-01-01"
 END_DATE = "2026-04-30"
 
-# Chronological split. Feature selection and (later) ranker training reference
-# these exact dates so train/test stay consistent across the pipeline.
-#   train : TRAIN_START_DATE .. TRAIN_END_DATE        (60%)
-#   test  : TEST_START_DATE  .. TEST_END_DATE         (remaining 40% for now)
-# Validation is not split out yet (data is currently too scarce); the params are
-# kept as placeholders. When there is enough data, set VAL_START/END_DATE and
-# move TEST_START_DATE to the day after VAL_END_DATE.
-TRAIN_START_DATE = "2023-05-01"
-TRAIN_END_DATE = "2025-10-09"
-VAL_START_DATE = None            # placeholder; not used yet
-VAL_END_DATE = None              # placeholder; not used yet
-TEST_START_DATE = "2025-10-10"   # test directly follows train for now
+# Chronological split. Feature selection and ranker training reference these
+# exact dates so train/val/test stay consistent across the pipeline.
+#   train : TRAIN_START_DATE .. TRAIN_END_DATE   (~60% of 2017-2026)
+#   val   : VAL_START_DATE   .. VAL_END_DATE     (~20%)  -> hyperparameter tuning
+#   test  : TEST_START_DATE  .. TEST_END_DATE    (~20%)  -> final eval only
+# Feature selection uses TRAIN ONLY (never val/test). Val is for tuning the
+# ranker; test is untouched until the very end.
+TRAIN_START_DATE = "2017-01-01"
+TRAIN_END_DATE = "2022-08-05"    # ~60% split
+VAL_START_DATE = "2022-08-08"    # ~20% — hyperparameter tuning
+VAL_END_DATE = "2024-06-18"
+TEST_START_DATE = "2024-06-19"   # ~20% — final evaluation only
 TEST_END_DATE = "2026-04-30"
 
 # Days to drop between train and the next segment so a 5-day forward-return label
@@ -104,6 +123,7 @@ TEST_END_DATE = "2026-04-30"
 # strict once val/test matter for final evaluation.
 EMBARGO_DAYS = 0
 
+# Forward-return prediction target (5-day only; 1-day dropped).
 FORWARD_RETURN_HORIZON = 5
 TARGET_COLUMN = "ret_fwd_5d"
 
