@@ -1,0 +1,71 @@
+======================================================================
+MULTIVARIATE FEATURE SELECTION (Lasso / ElasticNet)
+======================================================================
+
+Target            : ret_fwd_5d
+Train through     : 2022-08-05 (train segment only)
+Feature-set views : z, rank, sector_neutral_rank
+Models            : LassoCV, ElasticNetCV (date TimeSeriesSplit CV)
+Pipeline          : SimpleImputer(median) -> StandardScaler -> model
+Selected if        : |coefficient| > 1e-12 in ANY experiment
+
+Experiments run   : 6
+Alphas selected   : 12
+
+----------------------------------------------------------------------
+SELECTED ALPHAS (list B)
+----------------------------------------------------------------------
+  + alpha_26  1-day return                       picks= 1  coef=-8.3983e-05  [sector_neutral_rank/lasso]
+  + alpha_27  5-day return                       picks= 1  coef=-1.4929e-04  [sector_neutral_rank/lasso]
+  + alpha_36  52-week high proximity             picks= 1  coef=-2.5658e-05  [sector_neutral_rank/lasso]
+  + alpha_38  20-day breakdown                   picks= 1  coef=+2.0511e-04  [sector_neutral_rank/lasso]
+  + alpha_39  1-day reversal                     picks= 1  coef=+4.9251e-06  [sector_neutral_rank/lasso]
+  + alpha_40  5-day reversal                     picks= 1  coef=+1.2250e-06  [sector_neutral_rank/lasso]
+  + alpha_42  Overnight return                   picks= 1  coef=-1.6241e-04  [sector_neutral_rank/lasso]
+  + alpha_46  VWAP deviation reversion           picks= 1  coef=+1.3787e-04  [sector_neutral_rank/lasso]
+  + alpha_55  Average true range                 picks= 1  coef=-6.6584e-05  [sector_neutral_rank/lasso]
+  + alpha_58  Downside volatility                picks= 1  coef=+1.9990e-05  [sector_neutral_rank/lasso]
+  + alpha_65  Dollar volume                      picks= 1  coef=-3.0050e-04  [sector_neutral_rank/lasso]
+  + alpha_67  Amihud illiquidity                 picks= 1  coef=+4.3640e-05  [sector_neutral_rank/lasso]
+
+----------------------------------------------------------------------
+NOT SELECTED (zero coefficient in every experiment)
+----------------------------------------------------------------------
+  - alpha_28  21-day return
+  - alpha_29  63-day return
+  - alpha_30  126-day return
+  - alpha_31  252-day return
+  - alpha_32  12-1 month momentum
+  - alpha_33  Residual momentum
+  - alpha_34  Sector-neutral momentum
+  - alpha_37  20-day breakout
+  - alpha_41  21-day reversal
+  - alpha_43  Intraday return
+  - alpha_44  Overnight-intraday reversal
+  - alpha_45  Gap-fill signal
+  - alpha_47  20-day moving average distance
+  - alpha_48  MA20-MA60 crossover
+  - alpha_49  MA20 slope
+  - alpha_50  RSI reversion score
+  - alpha_51  MACD normalized
+  - alpha_52  Bollinger z-score
+  - alpha_53  Bollinger reversion
+  - alpha_54  Daily high-low range
+  - alpha_56  21-day realized volatility
+  - alpha_57  63-day realized volatility
+  - alpha_59  Idiosyncratic volatility
+  - alpha_60  Market beta
+  - alpha_61  Return skewness
+  - alpha_62  Return kurtosis
+  - alpha_63  63-day max drawdown
+  - alpha_64  Abnormal volume
+  - alpha_66  Turnover
+  - alpha_68  ADV trend
+  - alpha_69  Price-volume correlation
+  - alpha_70  On-balance volume change
+  - alpha_71  Accumulation/distribution slope
+  - alpha_72  Money flow index
+  - alpha_73  Chaikin money flow
+  - alpha_74  Volume-confirmed momentum
+  - alpha_75  Low-volatility momentum
+

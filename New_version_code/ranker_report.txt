@@ -1,0 +1,42 @@
+========================================================================
+XGBOOST RANKER (Stage 8)
+========================================================================
+
+Target        : forward_5d_excess_return
+Alphas        : 27  (81 feature columns = alphas x 3 transforms)
+Transforms    : _z, _rank, _sector_neutral_rank (fed jointly; GBDT picks)
+Objectives    : rank:pairwise, rank:ndcg
+Relevance     : within-date return ranks, 0..31 grades
+Grid          : 6-config covering grid, selected by VAL mean daily Rank IC
+Split         : train 2017-01-01..2022-08-05 | val 2022-08-08..2024-06-18 | test 2024-06-19..2026-04-30
+
+------------------------------------------------------------------------
+PERFORMANCE
+------------------------------------------------------------------------
+  rank:pairwise  val IC=+0.01670  test IC=+0.03357  test ICIR=+0.182  test spread=+0.00476  test NDCG=0.8845
+  rank:ndcg      val IC=+0.01336  test IC=+0.02320  test ICIR=+0.127  test spread=+0.00579  test NDCG=0.8859
+
+------------------------------------------------------------------------
+TOP ALPHAS BY GAIN IMPORTANCE (aggregated over transforms, averaged over objectives)
+------------------------------------------------------------------------
+  alpha_59  Idiosyncratic volatility           gain=137.98
+  alpha_66  Turnover                           gain=102.52
+  alpha_58  Downside volatility                gain=47.77
+  alpha_67  Amihud illiquidity                 gain=30.75
+  alpha_60  Market beta                        gain=19.78
+  alpha_48  MA20-MA60 crossover                gain=18.47
+  alpha_55  Average true range                 gain=16.47
+  alpha_46  VWAP deviation reversion           gain=16.03
+  alpha_62  Return kurtosis                    gain=14.73
+  alpha_36  52-week high proximity             gain=13.93
+  alpha_27  5-day return                       gain=12.52
+  alpha_68  ADV trend                          gain=12.17
+  alpha_65  Dollar volume                      gain=10.44
+  alpha_61  Return skewness                    gain=9.49
+  alpha_73  Chaikin money flow                 gain=9.04
+  alpha_40  5-day reversal                     gain=8.11
+  alpha_71  Accumulation/distribution slope    gain=6.53
+  alpha_37  20-day breakout                    gain=5.85
+  alpha_69  Price-volume correlation           gain=5.44
+  alpha_74  Volume-confirmed momentum          gain=2.56
+

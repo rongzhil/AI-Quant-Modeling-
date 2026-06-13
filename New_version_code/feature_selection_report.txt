@@ -1,0 +1,136 @@
+========================================================================
+FEATURE SELECTION REPORT
+========================================================================
+Train cutoff           : 2022-08-05
+Significance threshold : |t_stat| >= 2.0
+Redundancy threshold   : |rank-corr| >= 0.8
+
+Alphas in              : 49
+Survived step 1        : 31
+Final selected         : 21
+
+------------------------------------------------------------------------
+STEP 1 - SIGNIFICANCE FILTER
+------------------------------------------------------------------------
+Dropped (18) for |t_stat| < 2.0:
+  - alpha_36_52_week_high_proximity            mean_ic=-0.0114 icir=-0.048 t_stat=-1.99 n_days=1731
+  - alpha_63_63_day_max_drawdown               mean_ic=-0.0099 icir=-0.044 t_stat=-1.91 n_days=1920
+  - alpha_55_average_true_range                mean_ic=-0.0047 icir=-0.043 t_stat=-1.89 n_days=1969
+  - alpha_29_63_day_return                     mean_ic=-0.0086 icir=-0.043 t_stat=-1.88 n_days=1919
+  - alpha_57_63_day_realized_volatility        mean_ic=+0.0093 icir=+0.038 t_stat=+1.65 n_days=1919
+  - alpha_54_daily_high_low_range              mean_ic=+0.0062 icir=+0.036 t_stat=+1.60 n_days=1982
+  - alpha_56_21_day_realized_volatility        mean_ic=+0.0069 icir=+0.030 t_stat=+1.35 n_days=1961
+  - alpha_70_on_balance_volume_change          mean_ic=-0.0039 icir=-0.030 t_stat=-1.33 n_days=1957
+  - alpha_34_sector_neutral_momentum           mean_ic=+0.0054 icir=+0.030 t_stat=+1.29 n_days=1856
+  - alpha_32_12_1_month_momentum               mean_ic=+0.0057 icir=+0.024 t_stat=+0.99 n_days=1730
+  - alpha_42_overnight_return                  mean_ic=-0.0040 icir=-0.022 t_stat=-0.98 n_days=1981
+  - alpha_44_overnight_intraday_reversal       mean_ic=+0.0040 icir=+0.022 t_stat=+0.98 n_days=1981
+  - alpha_45_gap_fill_signal                   mean_ic=+0.0040 icir=+0.022 t_stat=+0.98 n_days=1981
+  - alpha_64_abnormal_volume                   mean_ic=-0.0016 icir=-0.021 t_stat=-0.95 n_days=1963
+  - alpha_30_126_day_return                    mean_ic=+0.0040 icir=+0.018 t_stat=+0.75 n_days=1856
+  - alpha_33_residual_momentum                 mean_ic=+0.0022 icir=+0.016 t_stat=+0.62 n_days=1503
+  - alpha_75_low_volatility_momentum           mean_ic=+0.0020 icir=+0.009 t_stat=+0.38 n_days=1856
+  - alpha_31_252_day_return                    mean_ic=+0.0019 icir=+0.008 t_stat=+0.32 n_days=1730
+
+------------------------------------------------------------------------
+STEP 2 - REDUNDANCY CLUSTERS
+------------------------------------------------------------------------
+21 cluster(s); cluster head (highest |ICIR|) is kept.
+
+Cluster 1 [2 members] - KEEP alpha_65_dollar_volume
+    head : alpha_65_dollar_volume                     mean_ic=-0.0188 icir=-0.195 t_stat=-8.67 n_days=1982
+    drop : alpha_67_amihud_illiquidity                mean_ic=+0.0202 icir=+0.174 t_stat=+7.68 n_days=1961  |r_to_head|=0.821
+
+Cluster 2 [singleton] - KEEP alpha_46_vwap_deviation_reversion
+    head : alpha_46_vwap_deviation_reversion          mean_ic=+0.0183 icir=+0.125 t_stat=+5.55 n_days=1982
+
+Cluster 3 [singleton] - KEEP alpha_68_adv_trend
+    head : alpha_68_adv_trend                         mean_ic=-0.0095 icir=-0.114 t_stat=-4.99 n_days=1923
+
+Cluster 4 [singleton] - KEEP alpha_71_accumulation_distribution_slope
+    head : alpha_71_accumulation_distribution_slope   mean_ic=-0.0115 icir=-0.097 t_stat=-4.28 n_days=1963
+
+Cluster 5 [singleton] - KEEP alpha_73_chaikin_money_flow
+    head : alpha_73_chaikin_money_flow                mean_ic=-0.0126 icir=-0.090 t_stat=-4.00 n_days=1963
+
+Cluster 6 [4 members] - KEEP alpha_52_bollinger_z_score
+    head : alpha_52_bollinger_z_score                 mean_ic=-0.0155 icir=-0.089 t_stat=-3.95 n_days=1963
+    drop : alpha_53_bollinger_reversion               mean_ic=+0.0155 icir=+0.089 t_stat=+3.95 n_days=1963  |r_to_head|=1.000
+    drop : alpha_47_20_day_moving_average_distance    mean_ic=-0.0163 icir=-0.086 t_stat=-3.81 n_days=1963  |r_to_head|=0.938
+    drop : alpha_50_rsi_reversion_score               mean_ic=+0.0110 icir=+0.062 t_stat=+2.74 n_days=1968  |r_to_head|=0.871
+
+Cluster 7 [singleton] - KEEP alpha_37_20_day_breakout
+    head : alpha_37_20_day_breakout                   mean_ic=-0.0099 icir=-0.086 t_stat=-3.71 n_days=1869
+
+Cluster 8 [2 members] - KEEP alpha_40_5_day_reversal
+    head : alpha_40_5_day_reversal                    mean_ic=+0.0156 icir=+0.085 t_stat=+3.77 n_days=1977
+    drop : alpha_27_5_day_return                      mean_ic=-0.0156 icir=-0.085 t_stat=-3.77 n_days=1977  |r_to_head|=1.000
+
+Cluster 9 [4 members] - KEEP alpha_41_21_day_reversal
+    head : alpha_41_21_day_reversal                   mean_ic=+0.0152 icir=+0.081 t_stat=+3.59 n_days=1961
+    drop : alpha_28_21_day_return                     mean_ic=-0.0152 icir=-0.081 t_stat=-3.59 n_days=1961  |r_to_head|=1.000
+    drop : alpha_49_ma20_slope                        mean_ic=-0.0136 icir=-0.073 t_stat=-3.23 n_days=1958  |r_to_head|=0.943
+    drop : alpha_51_macd_normalized                   mean_ic=-0.0138 icir=-0.070 t_stat=-3.13 n_days=1981  |r_to_head|=0.863
+
+Cluster 10 [singleton] - KEEP alpha_38_20_day_breakdown
+    head : alpha_38_20_day_breakdown                  mean_ic=+0.0073 icir=+0.075 t_stat=+3.23 n_days=1861
+
+Cluster 11 [singleton] - KEEP alpha_66_turnover
+    head : alpha_66_turnover                          mean_ic=+0.0100 icir=+0.072 t_stat=+3.20 n_days=1982
+
+Cluster 12 [singleton] - KEEP alpha_72_money_flow_index
+    head : alpha_72_money_flow_index                  mean_ic=-0.0099 icir=-0.066 t_stat=-2.95 n_days=1969
+
+Cluster 13 [singleton] - KEEP alpha_62_return_kurtosis
+    head : alpha_62_return_kurtosis                   mean_ic=+0.0059 icir=+0.061 t_stat=+2.67 n_days=1919
+
+Cluster 14 [3 members] - KEEP alpha_26_1_day_return
+    head : alpha_26_1_day_return                      mean_ic=-0.0105 icir=-0.059 t_stat=-2.59 n_days=1912
+    drop : alpha_39_1_day_reversal                    mean_ic=+0.0105 icir=+0.059 t_stat=+2.59 n_days=1912  |r_to_head|=1.000
+    drop : alpha_43_intraday_return                   mean_ic=-0.0091 icir=-0.056 t_stat=-2.50 n_days=1982  |r_to_head|=0.827
+
+Cluster 15 [singleton] - KEEP alpha_48_ma20_ma60_crossover
+    head : alpha_48_ma20_ma60_crossover               mean_ic=-0.0103 icir=-0.055 t_stat=-2.39 n_days=1923
+
+Cluster 16 [singleton] - KEEP alpha_61_return_skewness
+    head : alpha_61_return_skewness                   mean_ic=-0.0059 icir=-0.052 t_stat=-2.30 n_days=1919
+
+Cluster 17 [singleton] - KEEP alpha_58_downside_volatility
+    head : alpha_58_downside_volatility               mean_ic=+0.0118 icir=+0.050 t_stat=+2.21 n_days=1920
+
+Cluster 18 [singleton] - KEEP alpha_69_price_volume_correlation
+    head : alpha_69_price_volume_correlation          mean_ic=-0.0053 icir=-0.050 t_stat=-2.21 n_days=1962
+
+Cluster 19 [singleton] - KEEP alpha_59_idiosyncratic_volatility
+    head : alpha_59_idiosyncratic_volatility          mean_ic=+0.0076 icir=+0.050 t_stat=+2.04 n_days=1673
+
+Cluster 20 [singleton] - KEEP alpha_74_volume_confirmed_momentum
+    head : alpha_74_volume_confirmed_momentum         mean_ic=+0.0051 icir=+0.049 t_stat=+2.01 n_days=1712
+
+Cluster 21 [singleton] - KEEP alpha_60_market_beta
+    head : alpha_60_market_beta                       mean_ic=+0.0145 icir=+0.048 t_stat=+2.01 n_days=1730
+
+------------------------------------------------------------------------
+FINAL SELECTED FEATURES
+------------------------------------------------------------------------
+  + alpha_65_dollar_volume                     mean_ic=-0.0188 icir=-0.195 t_stat=-8.67 n_days=1982
+  + alpha_46_vwap_deviation_reversion          mean_ic=+0.0183 icir=+0.125 t_stat=+5.55 n_days=1982
+  + alpha_68_adv_trend                         mean_ic=-0.0095 icir=-0.114 t_stat=-4.99 n_days=1923
+  + alpha_71_accumulation_distribution_slope   mean_ic=-0.0115 icir=-0.097 t_stat=-4.28 n_days=1963
+  + alpha_73_chaikin_money_flow                mean_ic=-0.0126 icir=-0.090 t_stat=-4.00 n_days=1963
+  + alpha_52_bollinger_z_score                 mean_ic=-0.0155 icir=-0.089 t_stat=-3.95 n_days=1963
+  + alpha_37_20_day_breakout                   mean_ic=-0.0099 icir=-0.086 t_stat=-3.71 n_days=1869
+  + alpha_40_5_day_reversal                    mean_ic=+0.0156 icir=+0.085 t_stat=+3.77 n_days=1977
+  + alpha_41_21_day_reversal                   mean_ic=+0.0152 icir=+0.081 t_stat=+3.59 n_days=1961
+  + alpha_38_20_day_breakdown                  mean_ic=+0.0073 icir=+0.075 t_stat=+3.23 n_days=1861
+  + alpha_66_turnover                          mean_ic=+0.0100 icir=+0.072 t_stat=+3.20 n_days=1982
+  + alpha_72_money_flow_index                  mean_ic=-0.0099 icir=-0.066 t_stat=-2.95 n_days=1969
+  + alpha_62_return_kurtosis                   mean_ic=+0.0059 icir=+0.061 t_stat=+2.67 n_days=1919
+  + alpha_26_1_day_return                      mean_ic=-0.0105 icir=-0.059 t_stat=-2.59 n_days=1912
+  + alpha_48_ma20_ma60_crossover               mean_ic=-0.0103 icir=-0.055 t_stat=-2.39 n_days=1923
+  + alpha_61_return_skewness                   mean_ic=-0.0059 icir=-0.052 t_stat=-2.30 n_days=1919
+  + alpha_58_downside_volatility               mean_ic=+0.0118 icir=+0.050 t_stat=+2.21 n_days=1920
+  + alpha_69_price_volume_correlation          mean_ic=-0.0053 icir=-0.050 t_stat=-2.21 n_days=1962
+  + alpha_59_idiosyncratic_volatility          mean_ic=+0.0076 icir=+0.050 t_stat=+2.04 n_days=1673
+  + alpha_74_volume_confirmed_momentum         mean_ic=+0.0051 icir=+0.049 t_stat=+2.01 n_days=1712
+  + alpha_60_market_beta                       mean_ic=+0.0145 icir=+0.048 t_stat=+2.01 n_days=1730
