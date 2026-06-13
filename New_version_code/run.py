@@ -216,10 +216,67 @@ def evaluate_and_select(panel: pd.DataFrame) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# Stage 7b (optional): multivariate (Lasso / ElasticNet) feature selection
+# --------------------------------------------------------------------------- #
+def run_multivariate_selection(panel: pd.DataFrame, verbose: bool = True) -> dict | None:
+    """Optional multivariate selection layer (Lasso / ElasticNet).
+
+    This is a SECOND, parallel feature-selection view that complements the
+    univariate Rank-IC + correlation method run in Stage 7. It is OFF by default
+    because it is slow (sklearn CV over the whole train segment) and is meant to
+    be run occasionally, not on every pipeline pass. The Stage-7 list and this
+    list are intended to be UNIONed downstream when training the ranker.
+
+    Imported lazily so the core pipeline never depends on sklearn being present.
+    """
+    _log("Stage 7b: multivariate (Lasso / ElasticNet) feature selection ...")
+    from . import select_features_multivariate as mv
+    return mv.run(panel, verbose=verbose)
+
+
+# --------------------------------------------------------------------------- #
+# Stage 9 (optional): XGBoost ranker
+# --------------------------------------------------------------------------- #
+def run_ranker_stage(panel: pd.DataFrame, verbose: bool = True) -> dict | None:
+    """Optional Stage 9: train the XGBoost learning-to-rank model.
+
+    Reads the union of the Rank-IC list (selected_features.csv) and the
+    multivariate list (multivariate_selected.csv) live from disk, feeds those
+    alphas' three transforms jointly, grid-searches a covering grid by
+    validation Rank IC, and writes performance + gain importance. OFF by default
+    because the grid search is slow. Imported lazily so the core pipeline never
+    depends on xgboost being installed.
+    """
+    _log("Stage 9: training XGBoost ranker (reads union of selection lists) ...")
+    from . import train_ranker
+    return train_ranker.run(panel, alpha_ids=None, verbose=verbose)
+
+
+# --------------------------------------------------------------------------- #
 # Top-level
 # --------------------------------------------------------------------------- #
-def run_pipeline(use_cache: bool = True, verbose: bool = True) -> dict:
-    """Run the whole pipeline end to end. Returns the key artifacts."""
+def run_pipeline(
+    use_cache: bool = True,
+    verbose: bool = True,
+    run_multivariate: bool = False,
+    run_ranker: bool = False,
+) -> dict:
+    """Run the whole pipeline end to end. Returns the key artifacts.
+
+    Parameters
+    ----------
+    use_cache : reuse cached parquet artifacts where available.
+    verbose : print per-ticker progress.
+    run_multivariate : if True, also run the optional Stage 7b multivariate
+        (Lasso / ElasticNet) selection. OFF by default because it is slow; turn
+        it on when you want to refresh the multivariate candidate list to union
+        with the Stage-7 list. Requires scikit-learn.
+    run_ranker : if True, also run the optional Stage 9 XGBoost ranker over the
+        union of the Rank-IC and multivariate selection lists. OFF by default
+        because the grid search is slow. Requires xgboost, and expects the
+        selection lists (selected_features.csv, and multivariate_selected.csv if
+        you want list B in the union) to exist.
+    """
     t0 = time.time()
     _log("=== PIPELINE START ===")
 
@@ -227,6 +284,21 @@ def run_pipeline(use_cache: bool = True, verbose: bool = True) -> dict:
     raw_panel = compute_alpha_panel(inputs, use_cache=use_cache, verbose=verbose)
     feature_panel = build_feature_panel(raw_panel, inputs, use_cache=use_cache)
     outputs = evaluate_and_select(feature_panel)
+
+    # Optional multivariate layer (off by default). Reuses the in-memory final
+    # panel, so it does not re-read the parquet.
+    multivariate = None
+    if run_multivariate:
+        multivariate = run_multivariate_selection(feature_panel, verbose=verbose)
+    else:
+        _log("Stage 7b: multivariate selection skipped (run_multivariate=False)")
+
+    # Optional ranker (off by default). Reuses the in-memory final panel.
+    ranker = None
+    if run_ranker:
+        ranker = run_ranker_stage(feature_panel, verbose=verbose)
+    else:
+        _log("Stage 9: ranker skipped (run_ranker=False)")
 
     _log(f"=== PIPELINE DONE in {time.time()-t0:.0f}s ===")
     _log(f"Selected {len(outputs['selection']['selected'])} features. "
@@ -238,6 +310,8 @@ def run_pipeline(use_cache: bool = True, verbose: bool = True) -> dict:
         "feature_panel": feature_panel,
         "ic_summary": outputs["ic_summary"],
         "selection": outputs["selection"],
+        "multivariate": multivariate,
+        "ranker": ranker,
     }
 
 

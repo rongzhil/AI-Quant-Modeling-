@@ -125,7 +125,7 @@ EMBARGO_DAYS = 0
 
 # Forward-return prediction target (5-day only; 1-day dropped).
 FORWARD_RETURN_HORIZON = 5
-TARGET_COLUMN = "ret_fwd_5d"
+TARGET_COLUMN = "forward_5d_excess_return"
 
 
 # --------------------------------------------------------------------------- #

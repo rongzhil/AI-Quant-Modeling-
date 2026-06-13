@@ -402,6 +402,34 @@ def load_spx_market_return() -> pd.DataFrame:
     return spx[["date", "market_return"]]
 
 
+def load_spx_close() -> pd.DataFrame:
+    """Load SPX daily close prices (date, spx_close).
+
+    Same source/parsing as ``load_spx_market_return`` but returns the raw close
+    level, not the daily log-return. Needed to build the forward market return
+    log(SPX(t+h)/SPX(t)) used by the excess-return target.
+    """
+    raw = pd.read_excel(config.SPX_PATH, header=1)
+    raw.columns = _normalize_columns(raw.columns)
+
+    date_col = next((c for c in raw.columns if "date" in c), None)
+    close_col = next(
+        (c for c in raw.columns if c in ("px_last", "last", "close", "spx_index", "spx") or "close" in c),
+        None,
+    )
+    if date_col is None or close_col is None:
+        raise ValueError(f"SPX file: could not find date/close columns in {list(raw.columns)}")
+
+    spx = pd.DataFrame(
+        {
+            "date": pd.to_datetime(raw[date_col], errors="coerce").dt.normalize(),
+            "spx_close": pd.to_numeric(raw[close_col], errors="coerce"),
+        }
+    )
+    spx = spx.dropna().sort_values("date").reset_index(drop=True)
+    return spx[["date", "spx_close"]]
+
+
 # --------------------------------------------------------------------------- #
 # Float shares (wide -> long, millions -> shares)
 # --------------------------------------------------------------------------- #

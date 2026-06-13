@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from . import config, cross_section, evaluate
+from . import config, cross_section, evaluate, io_data
 
 
 PASS, WARN, FAIL = "PASS", "WARN", "FAIL"
@@ -125,16 +125,31 @@ def check_alpha_no_lookahead(
 
 
 def check_forward_return_no_cross_ticker(price_panel: pd.DataFrame) -> CheckResult:
-    """ret_fwd_5d for a ticker must use only that ticker's own future prices."""
+    """The excess target's stock leg must use only that ticker's own future prices.
+
+    Target is forward_5d_excess_return = log(close(t+H)/close(t)) - log(SPX(t+H)/SPX(t)).
+    We recompute it independently (stock leg per-ticker, market leg by date) and
+    confirm it matches, which proves the stock leg has no cross-ticker leakage.
+    """
     panel = price_panel[["date", "ticker"]].copy()
     res = evaluate.add_forward_return(panel, price_panel)
     h = config.FORWARD_RETURN_HORIZON
 
-    # Recompute independently per ticker and compare.
+    # Stock leg, recomputed independently per ticker.
     p = price_panel[["date", "ticker", "close"]].copy()
     p["date"] = pd.to_datetime(p["date"]).dt.normalize()
     p = p.sort_values(["ticker", "date"])
-    p["indep"] = np.log(p.groupby("ticker")["close"].shift(-h) / p["close"])
+    p["_stock"] = np.log(p.groupby("ticker")["close"].shift(-h) / p["close"])
+
+    # Market leg, recomputed independently by date.
+    spx = io_data.load_spx_close()
+    spx["date"] = pd.to_datetime(spx["date"]).dt.normalize()
+    spx = spx.sort_values("date").reset_index(drop=True)
+    spx_close = pd.to_numeric(spx["spx_close"], errors="coerce")
+    spx["_mkt"] = np.log(spx_close.shift(-h) / spx_close).to_numpy()
+    p = p.merge(spx[["date", "_mkt"]], on="date", how="left")
+    p["indep"] = p["_stock"] - p["_mkt"]
+
     merged = res.merge(p[["date", "ticker", "indep"]], on=["date", "ticker"], how="left")
     a = merged[config.TARGET_COLUMN].to_numpy(dtype=float)
     b = merged["indep"].to_numpy(dtype=float)
@@ -144,7 +159,7 @@ def check_forward_return_no_cross_ticker(price_panel: pd.DataFrame) -> CheckResu
     d = np.max(np.abs(a[both] - b[both]))
     if d > 1e-9:
         return CheckResult("forward_return_no_cross_ticker", FAIL,
-                           f"forward return differs from per-ticker recompute by {d:.2e}")
+                           f"excess forward return differs from independent recompute by {d:.2e}")
     return CheckResult("forward_return_no_cross_ticker", PASS, f"max diff {d:.1e}")
 
 

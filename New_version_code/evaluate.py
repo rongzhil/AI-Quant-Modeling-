@@ -27,23 +27,47 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from . import config
+from . import config, io_data
 
 
 def add_forward_return(panel: pd.DataFrame, price_panel: pd.DataFrame) -> pd.DataFrame:
-    """Attach ret_fwd_5d to the panel using each ticker's own close prices.
+    """Attach the 5-day forward EXCESS return target to the panel.
 
-    ret_fwd_5d(t) = log(close(t+H) / close(t)), computed within each ticker so
-    there is no cross-ticker contamination. The last H rows per ticker are NaN.
+    Matches the team's definition (Step 6 build_forward_return_labels):
+
+        forward_5d_excess_return(t) = log(close(t+H) / close(t))
+                                      - log(SPX(t+H) / SPX(t))
+
+    i.e. the stock's own H-day forward log return minus the market's (SPX) H-day
+    forward log return over the same window. The stock leg is computed within
+    each ticker (no cross-ticker contamination); the market leg is a single SPX
+    series broadcast by date. The last H rows per ticker are NaN (no future), as
+    are dates whose t+H SPX value is unavailable.
+
+    The output column name is ``config.TARGET_COLUMN``
+    (``forward_5d_excess_return``).
     """
     h = config.FORWARD_RETURN_HORIZON
+
+    # --- stock leg: log(close(t+H)/close(t)) within each ticker ---
     prices = price_panel[["date", "ticker", "close"]].copy()
     prices["date"] = pd.to_datetime(prices["date"]).dt.normalize()
     prices = prices.sort_values(["ticker", "date"])
-
     close = pd.to_numeric(prices["close"], errors="coerce")
-    fwd = np.log(prices.groupby("ticker")["close"].shift(-h) / close)
-    prices[config.TARGET_COLUMN] = fwd.to_numpy()
+    stock_fwd = np.log(prices.groupby("ticker")["close"].shift(-h) / close)
+    prices["_stock_fwd"] = stock_fwd.to_numpy()
+
+    # --- market leg: log(SPX(t+H)/SPX(t)), one series by date ---
+    spx = io_data.load_spx_close()
+    spx["date"] = pd.to_datetime(spx["date"]).dt.normalize()
+    spx = spx.sort_values("date").reset_index(drop=True)
+    spx_close = pd.to_numeric(spx["spx_close"], errors="coerce")
+    spx["_mkt_fwd"] = np.log(spx_close.shift(-h) / spx_close).to_numpy()
+    mkt_fwd = spx[["date", "_mkt_fwd"]]
+
+    # --- excess = stock_fwd - mkt_fwd ---
+    prices = prices.merge(mkt_fwd, on="date", how="left")
+    prices[config.TARGET_COLUMN] = prices["_stock_fwd"] - prices["_mkt_fwd"]
 
     out = panel.copy()
     out["date"] = pd.to_datetime(out["date"]).dt.normalize()

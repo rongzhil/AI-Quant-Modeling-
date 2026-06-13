@@ -78,10 +78,13 @@ def _rolling_residuals(stock_excess: pd.Series, factors: pd.DataFrame, window: i
         sl = slice(t - window + 1, t + 1)
         y = y_all[sl]
         X = X_all[sl]
-        if np.isnan(y).any() or np.isnan(X).any():
+        if np.isnan(y[-1]) or np.isnan(X[-1]).any():
+                continue
+        valid = ~(np.isnan(y) | np.isnan(X).any(axis=1))
+        if valid.sum() < window // 2:
             continue
         # Least squares; residual at the last row of the window (day t).
-        beta, *_ = np.linalg.lstsq(X, y, rcond=None)
+        beta, *_ = np.linalg.lstsq(X[valid], y[valid], rcond=None)
         resid[t] = y[-1] - X[-1] @ beta
     return pd.Series(resid, index=stock_excess.index)
 
@@ -148,7 +151,7 @@ def compute_single_ticker_alphas(
 
     # alpha 33: cumulative residual from t-252 to t-21 = shift(21).rolling(231).
     if residual is not None:
-        out[_col(33)] = residual.shift(21).rolling(231, min_periods=231).sum()
+        out[_col(33)] = residual.shift(21).rolling(231, min_periods=200).sum()
     else:
         out[_col(33)] = np.nan
 
@@ -214,7 +217,7 @@ def compute_single_ticker_alphas(
 
     # alpha 59: idiosyncratic volatility = 63-day std of residuals (NOT annualized)
     if residual is not None:
-        out[_col(59)] = residual.rolling(63, min_periods=63).std()
+        out[_col(59)] = residual.rolling(63, min_periods=55).std()
     else:
         out[_col(59)] = np.nan
 
